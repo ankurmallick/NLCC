@@ -3,66 +3,117 @@
 import numpy as np
 from scipy.sparse import csr_matrix
 
-def lt_dec(b_e,decmat):
+def sr_dec(dec_list,num_funcs):
     
-    #b_e is the vector of encoded row-vector products
-    #decmat is the subset of encmat corresponding to completed products
+    #dec_list contains the indices for each encoded symbol in order of arrival
     
-    num_par, num_dec = decmat.shape
-    degrees = decmat.sum(1)
-    b_d = np.zeros(num_dec)
-    dec_ctr = 0
-    #Starting ripple
-    while dec_ctr < num_dec:
-        ripple = np.where(degrees==1)[0] 
-        if len(ripple) == 0:
-            return None
-        else:
-            #Decode
-            par_pos = ripple[0]
-            dec_pos = np.where(decmat[par_pos]==1)[0][0]
-            b_d[dec_pos] = b_e[par_pos] 
-            #Peel
-            dec_neighbors = np.where(decmat[:,dec_pos]==1)[0] #Neighbors of decoded symbol
-            b_e[dec_neighbors] -= b_d[dec_pos]
-            #Update graph
-            decmat[dec_neighbors,dec_pos] = 0
-            degrees[dec_neighbors] -= 1
-            #Increment counter
-            dec_ctr += 1
+    b = np.ones((num_funcs,1))
     
-    return b_d
+    A_list = []
+    
+    for (i,dec_sym) in enumerate(dec_list):
+        
+        a = np.zeros(num_funcs)
+        a[dec_sym] = 1
+        A_list.append(a)
+        
+        A = np.stack(A_list).T
+        
+        if np.linalg.matrix_rank(A) == np.linalg.matrix_rank(np.concatenate([A,b],1)):
+            
+            return i
+    
+    return -1
 
-def rep_dec(b_e,decmat):
+def lt_dec(dec_list,num_funcs):
     
-    #b_e is the vector of encoded row-vector products
-    #decmat is the subset of encmat corresponding to completed products
+    #dec_list contains the indices for each encoded symbol in order of arrival
     
-    repinv= decmat.T #decmat is permutation of identity
-    m = b_e.shape[0]
-    k = decmat.shape[0]
-    s = int(m/k)
-    b_d = np.empty(b_e.shape)
+    dec_num = 0
+    dec_set = set()
+    neighbours = {}
+    visited = []
     
-    for i in range(k):
-        j = np.where(repinv[i]==1)[0][0]
-        b_d[i*s:(i+1)*s] = b_e[j*s:(j+1)*s]
+    for (i,dec_sym) in enumerate(dec_list):
+        
+        proc_sym = set([ind for ind in dec_sym if ind not in dec_set]) #Remove decoded symbols
+        visited.append(proc_sym)
+        
+        if len(proc_sym) == 0:
+            continue #No useful information
+        
+        for node in proc_sym:
+            
+            #Updating neighbours
+            if node in neighbours:
+                neighbours[node].append(i)
+            else:
+                neighbours[node] = [i]
+        
+        if len(proc_sym) == 1:
+            
+            #New degree 1 symbol
+            ripple_node = proc_sym.pop()
+            ripple = [ripple_node]
+            
+            while ripple:
+                
+                node = ripple.pop()
+                
+                if node in dec_set:
+                    #Already processed
+                    continue
+                
+                #Decode degree 1 symbol
+                dec_set.add(node)
+                dec_num += 1
+                if dec_num == num_funcs:
+                    return i
+                
+                
+                for prev_ind in neighbours[node]:
+                    
+                    #Process neighbours
+                    if node in visited[prev_ind]:
+                        visited[prev_ind].remove(node)
+                        if len(visited[prev_ind]) == 1:
+                            new_node = visited[prev_ind].pop()
+                            ripple.append(new_node)
     
-    return b_d
-
-def mds_dec(b_e,decmat):
+    return -1
     
-    #b_e is the vector of encoded row-vector products
-    #decmat is the subset of encmat corresponding to completed products
+def bcc_dec(dec_list,num_funcs):
     
-    mdsinv=np.linalg.inv(decmat)
-    m = b_e.shape[0]
-    k = decmat.shape[0]
-    s = int(m/k)
-    b_d = np.empty(b_e.shape)
+    #dec_list contains the indices for each encoded symbol in order of arrival
     
-    for i in range(k):
-        b_d[i*s:(i+1)*s] = sum([mdsinv[i][j]*b_e[j*s:(j+1)*s] for j in range(k)])
+    ind_set = set()
     
-    return b_d
+    for (i,dec_sym) in enumerate(dec_list):
+        
+        for j in dec_sym:
+            ind_set.add(j)
+        
+#         print (len(ind_set))
+            
+        if len(ind_set) == num_funcs:
+            return i
+    
+    return -1
+    
+def rep_dec(dec_list,num_funcs):
+    
+    #dec_list contains the indices for each encoded symbol in order of arrival
+    
+    ind_set = set()
+    
+    for (i,dec_sym) in enumerate(dec_list):
+        
+        for j in dec_sym:
+            ind_set.add(j)
+            
+        if len(ind_set) == num_funcs:
+            return i
+    
+    return -1
+    
 
