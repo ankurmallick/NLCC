@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # RCMV
 
 Code for the ACM SIGMETRICS 2020 paper 'Rateless Codes for Near-Perfect Load Balancing in Distributed Matrix-Vector Multiplication' (https://arxiv.org/abs/1804.10331)  
@@ -22,3 +23,7 @@ The repository also includes the following additional files:
 
 3. decoders.py: Contains the decoding functions for the different coded computing schemes (converts encoded results to the final/decoded result)
 
+=======
+# NLCC
+Rateless Codes for Distributed Non-linear Computing
+>>>>>>> c51a3fa6ff9ecf253e8f6c450f82fa20515a3e25
